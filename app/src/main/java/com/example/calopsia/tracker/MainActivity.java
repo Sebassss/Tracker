@@ -1,12 +1,13 @@
 package com.example.calopsia.tracker;
 
 
-        import android.Manifest;
+import android.Manifest;
         import android.content.pm.PackageManager;
         import android.location.Address;
         import android.location.Geocoder;
         import android.location.Location;
-        import android.os.Build;
+import android.os.AsyncTask;
+import android.os.Build;
         import android.os.Bundle;
         import android.support.annotation.NonNull;
         import android.support.annotation.Nullable;
@@ -14,7 +15,8 @@ package com.example.calopsia.tracker;
         import android.support.v4.app.FragmentActivity;
         import android.util.Log;
         import android.view.View;
-        import android.widget.Button;
+import android.view.WindowManager;
+import android.widget.Button;
         import android.widget.EditText;
         import android.widget.Toast;
         import android.widget.ZoomControls;
@@ -32,8 +34,12 @@ package com.example.calopsia.tracker;
         import com.google.android.gms.maps.model.LatLng;
         import com.google.android.gms.maps.model.MarkerOptions;
 
-        import java.io.IOException;
-        import java.util.List;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.List;
 
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
@@ -48,11 +54,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     Button clear;
     Double myLatitude = null;
     Double myLongitude = null;
+
+    Double tmp_myLatitude = null;
+    Double tmp_myLongitude = null;
+
+    float mySpeed;
     private GoogleApiClient googleApiClient;
     private LocationRequest locationRequest;
     protected static final String TAG = "MapsActvity";
 
-
+    SendData server;
+    GPS gps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -150,6 +162,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     }
 
@@ -169,8 +182,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         // Add a marker in Sydney and move the camera
         LatLng sydney = new LatLng(0, 0);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
@@ -240,11 +253,26 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public void onLocationChanged(Location location) {
         myLatitude = location.getLatitude();
         myLongitude = location.getLongitude();
+        mySpeed = location.getSpeed();
+
+        if(mySpeed > 5) {
+
+            LatLng latLng = new LatLng(myLatitude, myLongitude);
+            //CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 14);
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(latLng);
+            mMap.animateCamera(cameraUpdate);
+
+            LongOperation l = new LongOperation();
+            l.execute();
+            //Log.e("APK", server.server_url);
+        }
+        else
+        {
+            Log.e("APK", "Velocidad a superar 5 km/h - Actual: " + mySpeed  );
+            Toast.makeText(getApplicationContext(), "Velocidad a superar 5 km/h - Actual: " + mySpeed, Toast.LENGTH_LONG).show();
+        }
 
 
-        LatLng latLng = new LatLng(myLatitude, myLongitude);
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 14);
-        mMap.animateCamera(cameraUpdate);
     }
 
     @Override
@@ -274,4 +302,52 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         super.onStop();
         googleApiClient.disconnect();
     }
+
+
+    private class LongOperation extends AsyncTask<String, Void, String>
+    {
+        @Override
+        protected String doInBackground(String... params)
+        {
+            try
+            {
+                Thread.sleep(5000);
+            }
+            catch (InterruptedException e)
+            {
+                Thread.interrupted();
+            }
+
+            server = new SendData();
+            server.params = myLatitude + "/" +  myLongitude + "/"+  mySpeed + "/"  + "1";
+            server.server_url = "http://200.0.236.210:84/movilidadesMSP/public/GpsDataPost" + "/" + server.params;
+
+            if(server.sendPostData() == 200) {
+                Toast.makeText(getApplicationContext(), "Datos Enviados Correctamente.", Toast.LENGTH_LONG).show();
+            }
+            return "Executed";
+        }
+
+        @Override
+        protected void onPostExecute(String result)
+        {
+            //TextView txt = (TextView) findViewById(R.id.);
+            //txt.setText("Executed"); // txt.setText(result);
+            // might want to change "executed" for the returned string passed
+            // into onPostExecute() but that is upto you
+        }
+
+        @Override
+        protected void onPreExecute()
+        {
+
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values)
+        {
+
+        }
+    }
+
 }
