@@ -2,10 +2,12 @@ package com.example.calopsia.tracker;
 
 
 import android.Manifest;
-        import android.content.pm.PackageManager;
+import android.content.Context;
+import android.content.pm.PackageManager;
         import android.location.Address;
         import android.location.Geocoder;
         import android.location.Location;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Build;
         import android.os.Bundle;
@@ -23,7 +25,9 @@ import android.widget.Button;
 
         import com.google.android.gms.common.ConnectionResult;
         import com.google.android.gms.common.api.GoogleApiClient;
-        import com.google.android.gms.location.LocationListener;
+        //import com.google.android.gms.location.LocationListener;
+        import android.location.LocationListener;
+        import android.location.LocationManager;
         import com.google.android.gms.location.LocationRequest;
         import com.google.android.gms.location.LocationServices;
         import com.google.android.gms.maps.CameraUpdate;
@@ -34,18 +38,16 @@ import android.widget.Button;
         import com.google.android.gms.maps.model.LatLng;
         import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.io.DataOutputStream;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+
 import java.util.List;
 
 
-public class MainActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
+public class MainActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
 
-    private GoogleMap mMap;
+    public GoogleMap mMap;
     private final static int MY_PERMISSION_FINE_LOCATION = 101;
     ZoomControls zoom;
     Button markBt;
@@ -55,10 +57,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     Double myLatitude = null;
     Double myLongitude = null;
 
-    Double tmp_myLatitude = null;
-    Double tmp_myLongitude = null;
 
-    float mySpeed;
     private GoogleApiClient googleApiClient;
     private LocationRequest locationRequest;
     protected static final String TAG = "MapsActvity";
@@ -164,6 +163,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        LocationManager mlocManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        GPS mlocListener = new GPS();
+        mlocListener.setMainActivity(this);
+        mlocManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0,(LocationListener) mlocListener);
+
     }
 
 
@@ -180,31 +184,33 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(0, 0);
-        //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-            @Override
-            public void onMapClick(LatLng latLng) {
-                mMap.addMarker(new MarkerOptions().position(latLng).title("from onMapClick"));
-                mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
-            }
-        });
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            mMap.setMyLocationEnabled(true);
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MY_PERMISSION_FINE_LOCATION);
-            }
-        }
+
+//        // Add a marker in Sydney and move the camera
+//
+//        LatLng sydney = new LatLng(gps.getLatitude(), gps.getLongitude());
+//        //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+//        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+//        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+//            @Override
+//            public void onMapClick(LatLng latLng) {
+//                mMap.addMarker(new MarkerOptions().position(latLng).title("from onMapClick"));
+//                mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+//            }
+//        });
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+//            // TODO: Consider calling
+//            //    ActivityCompat#requestPermissions
+//            // here to request the missing permissions, and then overriding
+//            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+//            //                                          int[] grantResults)
+//            // to handle the case where the user grants the permission. See the documentation
+//            // for ActivityCompat#requestPermissions for more details.
+//            mMap.setMyLocationEnabled(true);
+//        } else {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MY_PERMISSION_FINE_LOCATION);
+//            }
+//        }
 
 
     }
@@ -229,15 +235,15 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        requestLocationUpdates();
+        //requestLocationUpdates();
     }
 
-    private void requestLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
-        }
-
-    }
+//    private void requestLocationUpdates() {
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+//            LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
+//        }
+//
+//    }
 
     @Override
     public void onConnectionSuspended(int i) {
@@ -249,31 +255,31 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Log.i(TAG, "Connection Failed: ConnectionResult.getErrorCode() = " + connectionResult.getErrorCode());
     }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        myLatitude = location.getLatitude();
-        myLongitude = location.getLongitude();
-        mySpeed = location.getSpeed();
-
-        if(mySpeed > 5) {
-
-            LatLng latLng = new LatLng(myLatitude, myLongitude);
-            //CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 14);
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(latLng);
-            mMap.animateCamera(cameraUpdate);
-
-            LongOperation l = new LongOperation();
-            l.execute();
-            //Log.e("APK", server.server_url);
-        }
-        else
-        {
-            Log.e("APK", "Velocidad a superar 5 km/h - Actual: " + mySpeed  );
-            Toast.makeText(getApplicationContext(), "Velocidad a superar 5 km/h - Actual: " + mySpeed, Toast.LENGTH_LONG).show();
-        }
-
-
-    }
+//    @Override
+//    public void onLocationChanged(Location location) {
+//
+//
+//
+//
+//        myLatitude = location.getLatitude();
+//        myLongitude = location.getLongitude();
+//        mySpeed = speed;
+//
+//
+//
+//            LatLng latLng = new LatLng(myLatitude, myLongitude);
+//            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 14);
+//            //CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(latLng);
+//            mMap.animateCamera(cameraUpdate);
+//
+//            LongOperation l = new LongOperation();
+//            l.execute();
+//            //Log.e("APK", server.server_url);
+//            Log.e("APK", "Velocidad OK " + mySpeed  );
+//
+//
+//
+//    }
 
     @Override
     protected void onStart() {
@@ -284,16 +290,16 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onPause() {
         super.onPause();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-            LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            //LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
+        }
     }
-
 
     @Override
     protected void onResume() {
         super.onResume();
         if (googleApiClient.isConnected()) {
-            requestLocationUpdates();
+            //requestLocationUpdates();
         }
     }
 
@@ -318,13 +324,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 Thread.interrupted();
             }
 
-            server = new SendData();
-            server.params = myLatitude + "/" +  myLongitude + "/"+  mySpeed + "/"  + "1";
-            server.server_url = "http://200.0.236.210:84/movilidadesMSP/public/GpsDataPost" + "/" + server.params;
-
-            if(server.sendPostData() == 200) {
-                Toast.makeText(getApplicationContext(), "Datos Enviados Correctamente.", Toast.LENGTH_LONG).show();
-            }
+//            server = new SendData();
+//            server.params = myLatitude + "/" +  myLongitude + "/"+  mySpeed + "/"  + "1";
+//            server.server_url = "http://200.0.236.210:84/movilidadesMSP/public/GpsDataPost" + "/" + server.params;
+//
+//            if(server.sendPostData() == 200) {
+//                Toast.makeText(getApplicationContext(), "Datos Enviados Correctamente.", Toast.LENGTH_LONG).show();
+//            }
             return "Executed";
         }
 
