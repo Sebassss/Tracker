@@ -10,6 +10,7 @@ import java.net.URL;
 /**
  * Created by SEbas on 13/02/2017.
  */
+//http://10.64.65.200:84/movilidadesMSP/public/GpsDataPost/-31.5365091/-68.5378035/0.0/1
 
 public class SendData {
 
