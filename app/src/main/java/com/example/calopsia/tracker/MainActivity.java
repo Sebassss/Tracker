@@ -1,118 +1,141 @@
 package com.example.calopsia.tracker;
 
 import android.Manifest;
-import android.content.BroadcastReceiver;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.os.BatteryManager;
-import android.os.Bundle;
-import android.provider.Settings;
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
-import android.util.Log;
+import android.test.mock.MockPackageManager;
+import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.Toast;
-import android.os.Vibrator;
 
-public class MainActivity extends Activity{
+public class MainActivity extends Activity {
 
-    public String server_host = "";
-    public String server_params = "";
+    private final static int INTERVAL = 1000 * 60 * 1; //2 minutes
+    Button btnShowLocation;
+    private static final int REQUEST_CODE_PERMISSION = 2;
+    String mPermission = Manifest.permission.ACCESS_FINE_LOCATION;
+
     public double latitud;
     public double longitud;
     public float speed;
+    // GPSTracker class
+    GPSTracker gps;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        this.registerReceiver(this.mBatInfoReceiver,
-                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+         /* This code together with the one in onDestroy()
+         * will make the screen be always on until this Activity gets destroyed. */
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        try {
+            if (ActivityCompat.checkSelfPermission(this, mPermission)
+                    != MockPackageManager.PERMISSION_GRANTED) {
 
-        LocationDetector myloc = new LocationDetector(this);
-        double myLat = 0;
-        double myLong = 0;
-        float mySpeed = 0;
-        if (myloc.canGetLocation)
-        {
-            myloc.isNetworkEnabled = false;
-            Log.v("APK","can get location true - " + myloc.GpsProvider);
-            Toast.makeText(this, "Hay datos de localizacion a traves de: " + myloc.GpsProvider , Toast.LENGTH_LONG).show();
-            myLat = myloc.getLatitude();
-            myLong = myloc.getLongitude();
-            mySpeed = myloc.getSpeed();
+                ActivityCompat.requestPermissions(this, new String[]{mPermission},
+                        REQUEST_CODE_PERMISSION);
 
-            Log.v("get location values", Double.toString(myLat)
-                + "     " + Double.toString(myLong)
-                + "     " + Float.toString(mySpeed));
-
-            Toast.makeText(this, "Latitud: " + myLat
-                            + "Longitud: " + myLong
-                            + "Velocidad: " + mySpeed,
-                    Toast.LENGTH_LONG).show();
-
-            this.latitud = myLat;
-            this.longitud = myLong;
-            this.speed = mySpeed;
-
-            Data dt = new Data();
-            dt.setLatLon(myLat,myLong);
-            dt.setSpeed(mySpeed);
-        }
-        else {
-            Log.v("APK","can get location false");
-            Toast.makeText(this, "No se puede obtener la localizacion." , Toast.LENGTH_LONG).show();
-            //myloc.showSettingsAlert();
+                // If any permission above not allowed by user, this condition will
+                //execute every time, else your else part will work
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
+        btnShowLocation = (Button) findViewById(R.id.button);
+
+        // show location button click event
+        btnShowLocation.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View arg0) {
+                // create class object
+                gps = new GPSTracker(MainActivity.this);
+
+                // check if GPS enabled
+                if(gps.canGetLocation()){
+
+                    latitud = gps.getLatitude();
+                    longitud = gps.getLongitude();
+                    speed = (gps.getSpeed()*3600)/1000;
+
+                    // \n is for new line
+                    Toast.makeText(getApplicationContext(), "Your Location is - \nLat: "
+                            + latitud + "\nLong: " + longitud + "\nVelocidad: " + (int)speed + " KM/h", Toast.LENGTH_LONG).show();
+                }else{
+                    // can't get location
+                    // GPS or Network is not enabled
+                    // Ask user to enable GPS/network in settings
+                    gps.showSettingsAlert();
+                }
+
+
+            }
+        });
+        startRepeatingTask();
     }
 
-    private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
+
+    Handler mHandler = new Handler();
+
+    Runnable mHandlerTask = new Runnable()
+    {
         @Override
-        public void onReceive(Context arg0, Intent intent) {
-            // TODO Auto-generated method stub
-            int level = intent.getIntExtra("level", 0);
-
-            int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-            boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                    status == BatteryManager.BATTERY_STATUS_FULL;
-
-            int chargePlug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-            boolean usbCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_USB;
-            boolean acCharge = chargePlug == BatteryManager.BATTERY_PLUGGED_AC;
-
-            GlobalValues gv = new GlobalValues();
-            gv.plug = isCharging;
-            gv.level = level;
-            Log.v("APK", String.valueOf(level) + "% " + ((usbCharge) ? "Cargando..." : "Sin cargarse" ));
+        public void run() {
+            btnShowLocation.performClick();
+            mHandler.postDelayed(mHandlerTask, INTERVAL);
+            LongOperation lg = new LongOperation();
+            lg.execute();
         }
     };
 
+    void startRepeatingTask()
+    {
+        mHandlerTask.run();
+    }
 
+    void stopRepeatingTask()
+    {
+        mHandler.removeCallbacks(mHandlerTask);
+    }
+}
+
+class LongOperation extends AsyncTask<String, Void, String> {
     @Override
-    protected void onPause() {
-        super.onPause();
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    protected String doInBackground(String... params) {
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+        //txt.setText("Executed");
+        SendData sd = new SendData();
+        sd.params = "";
+        sd.server_url="http://200.0.236.210:84/movilidadesMSP/public/GpsDataPost/0/0/0.0/2/1/1";
+        //sd.sendPostData();
+        return null;
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    protected void onPostExecute(String result) {
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    protected void onPreExecute() {
+    }
+
+    @Override
+    protected void onProgressUpdate(Void... values) {
     }
 }
